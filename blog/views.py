@@ -7,6 +7,8 @@ class BlogList(ListView):
     paginate_by = 3
     model = Post
     template_name = 'home.html'
+    ordering = ['-id']
+
 
 
 class BlogDetailView(DetailView):
