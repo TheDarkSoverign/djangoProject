@@ -1,8 +1,11 @@
 from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.models import User
 from django.contrib.auth.views import LoginView
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
+from django.views import View
 from django.views.generic import ListView, DetailView, TemplateView, CreateView, FormView
 
 from .models import Post
@@ -20,7 +23,8 @@ class BlogList(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form'] = RegisterUserForm()
+        context['reg_form'] = RegisterUserForm()
+        context['login_form'] = LoginUserForm()
         return context
 
 class BlogDetailView(DetailView):
@@ -33,39 +37,41 @@ class AboutPageView(TemplateView):
 
 
 class RegisterUserView(FormView):
-    form_class = RegisterUserForm
-    template_name = 'register.html'
-    success_url = reverse_lazy('home')
-
-    def form_valid(self, form):
-        form.save()
-        username = form.cleaned_data.get('username')
-        password = form.cleaned_data.get('password1')
-        user = authenticate(username=username, password=password)
-        login(self.request, user)
-        return super().form_valid(form)  # Возвращаем JSON-ответ о успешной регистрации
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['form'] = self.form_class()
-        return context
-
-
-class LoginUser(LoginView):
-    form_class = LoginUserForm
-    template_name = 'login.html'
-    success_url = ''
-
     def get(self, request):
-        form = LoginUserForm()
-        return render(request, self.template_name, {'form': form})
+        form = RegisterUserForm()
+        return render(request, 'register.html', {'form': form})
 
     def post(self, request):
-        form = self.get_form()
+        form = RegisterUserForm(request.POST)
         if form.is_valid():
-            return self.form_valid(form)
-        else:
-            return self.form_invalid(form)
+            username = form.cleaned_data['username']
+            password = form.cleaned_data['password1']
+            email = form.cleaned_data['email']
+
+            # Создаем пользователя
+            user = User.objects.create_user(username=username, email=email, password=password)
+
+            # Авторизуем пользователя
+            user = authenticate(username=username, password=password)
+            login(request, user)
+
+            # Перенаправляем пользователя на нужную страницу
+            return redirect('home')
+        return render(request, 'register.html', {'form': form})
+
+
+class LoginUser(View):
+    def get(self, request):
+        form1 = LoginUserForm()
+        return render(request, 'login.html', {'form': form1})
+
+    def post(self, request):
+        form1 = LoginUserForm(data=request.POST)
+        if form1.is_valid():
+            user = form1.get_user()
+            login(request, user)
+            return redirect('home')
+        return render(request, 'login.html', {'form': form1})
 
 def logout_user(request):
     logout(request)

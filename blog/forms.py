@@ -12,7 +12,20 @@ class RegisterUserForm(UserCreationForm):
     model = User
     fields = ('username', 'email', 'password1', 'password2')
 
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get('password')
+        password_repeat = cleaned_data.get('password_repeat')
+
+        if password != password_repeat:
+            raise forms.ValidationError("Passwords do not match")
+
+        return cleaned_data
+
 
 class LoginUserForm(AuthenticationForm):
     username = forms.CharField(label='Логин', widget=forms.TextInput(attrs={'class': "form-input"}))
     password = forms.CharField(label='Пароль', widget=forms.PasswordInput(attrs={'class': "form-input"}))
+
+    model = User
+    fields = ('username', 'password')
